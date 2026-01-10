@@ -84,31 +84,35 @@ Antes de la implementación, el equipo de negocio dedicaba **2 horas diarias** a
 
 ## 🎓 Decisiones Técnicas Clave
 
-### 1️⃣ Manejo de Valores Nulos (15% del dataset)
+### 1️⃣ Manejo de Valores Nulos
 
-**Problema:** Precios faltantes en productos.
+**Problema:** La columna `parent_category_id` en categories tenía todos sus valores nulos.
 
-**Solución:** Imputación con promedio por categoría en lugar de promedio global.
+**Solución:** Eliminación de la columna `parent_category_id` ya que no aportaba información útil.
 
-**Razón:** Preserva la lógica de negocio - un producto de "Electrónica" tiene precios muy diferentes a "Ropa".
+**Razón:** Una columna completamente vacía no proporciona valor analítico y solo ocupa espacio.
 
 ```python
-df['price'].fillna(df.groupby('category')['price'].transform('mean'))
+df_categories.drop(columns=['parent_category_id'], inplace=True)
 ```
 
-### 2️⃣ Eliminación de Duplicados (3% del dataset)
+**Otros valores nulos identificados:**
+- `orders.promotion_id`: NaN indica que la orden no tiene promoción aplicada (se mantiene).
+- `orders.notes`: NaN indica ausencia de notas en la orden (se mantiene).
 
-**Problema:** Registros duplicados por órdenes de prueba.
+### 2️⃣ Verificación de Duplicados
 
-**Solución:** Eliminación basada en `order_id + customer_id` únicos.
+**Análisis:** Se verificó la existencia de duplicados en todas las tablas.
 
-**Razón:** Duplicados distorsionaban métricas de ventas y análisis de clientes.
+**Resultado:** No se encontraron registros duplicados en ninguna tabla.
+
+**Importancia:** Validar la ausencia de duplicados garantiza la integridad de las métricas calculadas.
 
 ### 3️⃣ Formato Parquet vs CSV
 
-**Decisión:** Migración completa a Parquet para datos procesados.
+**Decisión:** Almacenamiento dual en CSV y Parquet para flexibilidad.
 
-**Beneficios:**
+**Beneficios de Parquet:**
 - 🗜️ Compresión columnar (8x reducción)
 - ⚡ Lectura más rápida (solo carga columnas necesarias)
 - 🎯 Preservación de tipos de datos
@@ -118,14 +122,13 @@ df['price'].fillna(df.groupby('category')['price'].transform('mean'))
 
 ## 📊 Insights de Negocio Descubiertos
 
-Al ejecutar el pipeline, identificamos patrones accionables:
+Al ejecutar el pipeline, se generaron los siguientes análisis:
 
-| Insight | Valor | Acción Recomendada |
-|---------|-------|-------------------|
-| **Regla 80/20** | 20% de clientes = 65% ventas | Programa de fidelización VIP |
-| **Productos Top 5** | Generan 45% ingresos | Nunca dejar sin stock |
-| **Estacionalidad** | +30% ventas Q4 | Aumentar inventario octubre |
-| **Abandono** | 12% órdenes no completadas | Implementar retargeting |
+| Análisis | Descripción |
+|----------|-------------|
+| **Top 5 Clientes** | Identificación de los 5 clientes con mayor gasto total |
+| **Producto más vendido** | Ranking de productos por cantidad vendida |
+| **Evolución mensual de ventas** | Tendencia temporal del total de ventas por mes |
 
 ---
 
@@ -152,11 +155,8 @@ pip install -r requirements.txt
 ### Ejecución
 
 ```bash
-# Ejecutar pipeline completo
-python main.py
-
-# O usar notebooks para exploración
-jupyter notebook notebooks/
+# Abrir y ejecutar el notebook
+jupyter notebook etl.ipynb
 ```
 
 ---
@@ -166,24 +166,26 @@ jupyter notebook notebooks/
 ```
 etl/
 │
-├── data/
-│   ├── raw/              # Datos originales (CSV)
-│   └── processed/        # Datos limpios (Parquet)
+├── data/                 # Datos originales (CSV)
+│   ├── ecommerce_brands.csv
+│   ├── ecommerce_categories.csv
+│   ├── ecommerce_customers.csv
+│   ├── ecommerce_inventory.csv
+│   ├── ecommerce_order_items.csv
+│   ├── ecommerce_orders.csv
+│   ├── ecommerce_products.csv
+│   ├── ecommerce_promotions.csv
+│   ├── ecommerce_reviews.csv
+│   ├── ecommerce_suppliers.csv
+│   └── ecommerce_warehouses.csv
 │
-├── notebooks/
-│   ├── 01_exploracion.ipynb
-│   ├── 02_limpieza.ipynb
-│   └── 03_analisis.ipynb
+├── output/               # Datos limpios (CSV y Parquet)
+│   ├── cleaned_*.csv
+│   └── cleaned_*.parquet
 │
-├── src/
-│   ├── extract.py        # Módulo de extracción
-│   ├── transform.py      # Limpieza y transformaciones
-│   ├── load.py           # Almacenamiento optimizado
-│   └── utils.py          # Funciones auxiliares
-│
-├── main.py               # Pipeline principal
-├── requirements.txt      # Dependencias
-└── README.md            # Este archivo
+├── etl.ipynb             # Notebook principal del pipeline
+├── README.md             # Este archivo
+└── requirements.txt      # Dependencias
 ```
 
 ---
@@ -207,13 +209,14 @@ etl/
 
 ---
 
-## 🧪 Testing
+## 🧪 Validaciones Realizadas
 
 El proyecto incluye validaciones de:
-- ✅ Integridad referencial entre tablas
-- ✅ Rangos válidos de precios y cantidades
-- ✅ Tipos de datos correctos post-transformación
-- ✅ Completitud de datos críticos (customer_id, order_id)
+- ✅ Exploración de tipos de datos con `df.info()` y `df.describe()`
+- ✅ Identificación de valores nulos con `df.isnull().sum()`
+- ✅ Verificación de ausencia de duplicados
+- ✅ Corrección de tipos de datos (fechas, categorías, booleanos)
+- ✅ Almacenamiento en formatos CSV y Parquet
 
 ---
 
@@ -236,9 +239,9 @@ Los datos nunca son perfectos. Implementar checks de calidad desde el inicio aho
 ## 👤 Autor
 
 **Tu Nombre**
-- LinkedIn: [tu-perfil](https://linkedin.com/in/tu-perfil)
-- GitHub: [tu-usuario](https://github.com/tu-usuario)
-- Email: tu-email@ejemplo.com
+- LinkedIn: [Tomás Amundrain](https://linkedin.com/in/tomasamundarain)
+- GitHub: [tomy07417](https://github.com/tomy07417)
+- Email: tomas07amunda@gmail.com
 
 ---
 
